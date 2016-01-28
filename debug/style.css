@@ -1,0 +1,49 @@
+.warning {
+    background-color: #ffd05b;
+    border: 1px solid #98741B;
+    color: #98741B;
+    margin: 10px 0;
+    padding: 10px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.right {
+    border-left: 2px solid #999999;
+    bottom: 0;
+    overflow: auto;
+    padding: 10px;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 35%;
+}
+
+.left {
+    padding-right: 35%;
+}
+
+h2 {
+    margin: 10px 0 5px 0;
+}
+
+.clickable {
+    cursor: pointer;
+}
+.clickable.active:after {
+    content: '[ON]';
+    color: #90d313;
+    margin-left: 3px;
+}
+
+button.toggle-on {
+    border: 1px solid #90d313;
+    color: #90d313;
+    font-weight: bold;
+}
+
+.mgr {
+    margin-right: 5px;
+}

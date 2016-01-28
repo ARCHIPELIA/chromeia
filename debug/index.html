@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Archipelia</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="../assets/jquery-1.11.3.min.js"></script>
+    <script src="../assets/EventEmitter.min.js"></script>
+    <script src="../js/classes/language/EpsonLanguage.js"></script>
+    <script src="../js/classes/language/EpsonTMH6000IVLanguage.js"></script>
+    <script src="../js/classes/language/EpsonTMT20IILanguage.js"></script>
+    <script src="../js/classes/language/EpsonTMU950Language.js"></script>
+    <script src="../js/classes/printer/Endpoint.js"></script>
+    <script src="../js/classes/printer/UsbInterface.js"></script>
+    <script src="../js/classes/printer/Printer.js"></script>
+    <script src="../js/classes/printer/EpsonTMH6000IV.js"></script>
+    <script src="../js/classes/printer/EpsonTMT20II.js"></script>
+    <script src="../js/classes/printer/EpsonTMU950.js"></script>
+    <script src="../js/classes/Api.js"></script>
+    <script src="../js/classes/App.js"></script>
+    <script src="utils.js"></script>
+    <script src="main.js"></script>
+    <script src="ui.js"></script>
+</head>
+<body>
+
+    <div class="step-1 js-steps">
+        <h2>Please select a device</h2>
+
+        <button class="js-select-device">Browse devices</button>
+    </div>
+
+    <div class="step-2 js-steps hidden">
+
+        <div class="right">
+            <h2>Device Info</h2>
+
+            <div class="js-info"></div>
+        </div>
+
+        <div class="left">
+            <h2>Playground</h2>
+            
+            <p>
+                <input type="text" class="mgr js-input" value="Wixiweb!">
+                <button class="js-print js-printer-button" disabled>Send text</button>
+            </p>
+            
+            <p>
+                <button class="mgr js-receipt js-printer-button" disabled>Receipt</button>
+                <button class="mgr js-template js-printer-button" disabled>Template</button>
+            </p>
+
+            <p>
+                <button class="mgr js-feed js-printer-button" disabled>Feed</button>
+                <button class="js-cut-full js-printer-button" disabled>Cut</button>
+            </p>
+
+            <p>
+                <button class="mgr js-paper-roll js-printer-button" disabled>Roll paper</button>
+                <button class="js-paper-slip js-printer-button" disabled>Slip paper</button>
+            </p>
+            
+            <hr />
+            
+            <input type="number" min="0" class="mgr js-paper-slip-feed" value="0" style="width: 40px;">
+            <button class="js-test js-printer-button" disabled style="color: red;">Test</button>
+        </div>
+
+    </div>
+</body>
+</html>

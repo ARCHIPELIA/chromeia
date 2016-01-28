@@ -1,0 +1,45 @@
+{
+    "manifest_version": 2,
+    "name": "Archipelia",
+    "description": "Application Archipelia permettant l'impression via l'API USB.",
+    "version": "0.2.0",
+    "icons": {
+        "16": "images/16-money-machine.png",
+        "128": "images/128-money-machine.png"
+    },
+    "app": {
+        "background": {
+            "scripts": [
+                "assets/EventEmitter.min.js",
+                "js/classes/language/EpsonLanguage.js",
+                "js/classes/language/EpsonTMH6000IVLanguage.js",
+                "js/classes/language/EpsonTMT20IILanguage.js",
+                "js/classes/language/EpsonTMU950Language.js",
+                "js/classes/printer/Endpoint.js",
+                "js/classes/printer/UsbInterface.js",
+                "js/classes/printer/Printer.js",
+                "js/classes/printer/EpsonTMH6000IV.js",
+                "js/classes/printer/EpsonTMT20II.js",
+                "js/classes/printer/EpsonTMU950.js",
+                "js/classes/Api.js",
+                "js/classes/App.js",
+                "launch.js"
+            ]
+        }
+    },
+    "permissions": [
+        "usb",
+        {
+            "usbDevices": [
+                {
+                    "vendorId": 1208,
+                    "productId": 514
+                }
+            ]
+        },
+        "storage"
+    ],
+    "externally_connectable": {
+        "matches": ["*://*.doom2.intra.wixiweb.net/*"]
+    }
+}
