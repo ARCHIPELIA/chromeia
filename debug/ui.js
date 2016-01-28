@@ -13,12 +13,36 @@ $(document).ready(function() {
     var $rollPaperButton = $('.js-paper-roll');
     var $slipPaperButton = $('.js-paper-slip');
     var $slipPaperFeedField = $('.js-paper-slip-feed');
-    
+
     /**
      * Bouton de sélection du périphérique
      */
     $selecteDeviceButton.on('click', showSelectDeviceWindow);
-    
+
+    $('#but-check-permissions').on('click', function (){
+        chrome.storage.local.get('selectedDevice', function(items) {
+            if (checkRuntimeError() !== true) return;
+
+            if (items.hasOwnProperty('selectedDevice') !== true) {
+                console.log('No device in localStorage')
+                return;
+            }
+
+            chrome.usb.getDevices({filters: [{vendorId: items.selectedDevice.vendorId}, {productId: items.selectedDevice.productId}]}, function (items){
+                console.log('Device restored', items.selectedDevice);
+                console.log(items);
+
+                if (items[0] != null){
+                    openPrinterConnection(items[0]);
+                }
+            });
+        });
+    });
+
+    $('#but-release-printer').on('click', function (){
+        releaseCurrentInterface();
+    });
+
     $testButton.on('click', function() {
         var feedLines = $slipPaperFeedField.val();
         var inputText = $inputField.val().trim();
@@ -26,7 +50,7 @@ $(document).ready(function() {
         var date = (new Date()).toLocaleTimeString();
         var string = date + ' ' + inputText + '\n';
         var tray = String.fromCharCode(0x04);
-        
+
         var command  = '{{initPrint}}';
         command += '{{bac ' + tray + '}}';
         // Sauts de lignes avant le texte
@@ -35,44 +59,44 @@ $(document).ready(function() {
         }
         command += '        ' + string; // espace pour combler le vide du papier "roll"
         command += EpsonLanguage.FF; // print and eject slip paper
-        var parserCommand = printer.language.parse(command);
+        var parserCommand = app.api.printer.language.parse(command);
 
         var buffer = stringtoArrayBuffer(parserCommand);
         sendCommandToPrinter( buffer );
     });
-    
+
     /**
      * Bouton "Roll paper"
      */
     $rollPaperButton.on('click', function() {
-        printer.setCurrentTray(0x00);
+        app.api.printer.setCurrentTray(0x00);
         var tray = String.fromCharCode(0x00);
         var command  = '{{initPrint}}{{bac ' + tray + '}}';
-        var parserCommand = printer.language.parse(command);
+        var parserCommand = app.api.printer.language.parse(command);
         var buffer = stringtoArrayBuffer(parserCommand);
         sendCommandToPrinter( buffer );
     });
-    
+
     /**
      * Bouton "Slip paper"
      */
     $slipPaperButton.on('click', function() {
-        printer.setCurrentTray(0x04);
+        app.api.printer.setCurrentTray(0x04);
         var tray = String.fromCharCode(0x04);
         var command  = '{{initPrint}}{{bac ' + tray + '}}';
-        var parserCommand = printer.language.parse(command);
+        var parserCommand = app.api.printer.language.parse(command);
         var buffer = stringtoArrayBuffer(parserCommand);
         sendCommandToPrinter( buffer );
     });
-    
+
     /**
      * Bouton "Receipt"
      */
     $receiptButton.on('click', function() {
-        var buffer = printer.parseCommand(ticket);
+        var buffer = app.api.printer.parseCommand(ticket);
         sendCommandToPrinter( buffer );
     });
-    
+
     /**
      * Bouton "Template"
      */
@@ -100,18 +124,18 @@ feedLine 4{{feedLine " + String.fromCharCode(4) + "}}\n\
 {{center}}simple center\n\
 \n\
 {{left}}simple left";
-        
-        var buffer = printer.parseCommand(template);
+
+        var buffer = app.api.printer.parseCommand(template);
         sendCommandToPrinter( buffer );
     });
-    
+
     /**
      * Bouton "Send text"
      */
     $printButton.on('click', function() {
         var inputText = $inputField.val().trim();
         if (inputText === '') return;
-        
+
         var date = (new Date()).toLocaleTimeString();
         /**
          * @see Le caractère de fin de ligne est obligatoire,
@@ -119,30 +143,31 @@ feedLine 4{{feedLine " + String.fromCharCode(4) + "}}\n\
          */
         var string = date + ' ' + inputText + '\n';
 
-        var buffer = printer.parseCommand(string);
+        var buffer = app.api.printer.parseCommand(string);
+
         sendCommandToPrinter( buffer );
     });
-    
+
     /**
      * Bouton "Cut"
      */
     $cutButton.on('click', function() {
         var string = '{{cut}}';
-        var command = printer.language.parse(string);
+        var command = app.api.printer.language.parse(string);
         var buffer = stringtoArrayBuffer(command);
         sendCommandToPrinter( buffer );
     });
-    
+
     /**
      * Bouton "Feed"
      */
     $feedButton.on('click', function() {
         var string = '{{feedLine ' + String.fromCharCode(0x02) + '}}';
-        var command = printer.language.parse(string);
+        var command = app.api.printer.language.parse(string);
         var buffer = stringtoArrayBuffer(command);
         sendCommandToPrinter( buffer );
     });
-    
+
     /**
      * Bouton de déconnexion du périphérique
      */
@@ -168,10 +193,10 @@ feedLine 4{{feedLine " + String.fromCharCode(4) + "}}\n\
      * Évènement: les infos du périphérique ont été obtenues
      */
     bindEvent(EVENTS.DEVICE_INFO_OBTAINED, function() {
-        var content ='Vendor ID: ' + printer.getVendorId() + ' (' + printer.getVendorIdHex() + ')<br>'
-                    + 'Product ID: ' + printer.getProductId() + ' (' + printer.getProductIdHex() + ')';
+        var content ='Vendor ID: ' + app.api.printer.getVendorId() + ' (' + app.api.printer.getVendorIdHex() + ')<br>'
+                    + 'Product ID: ' + app.api.printer.getProductId() + ' (' + app.api.printer.getProductIdHex() + ')';
 
-        printer.getInterfaces().forEach(function(usbInterface) {
+        app.api.printer.getInterfaces().forEach(function(usbInterface) {
             content += '<h3 class="clickable js-interface-' + usbInterface.getId() + ' js-interfaces" data-id="' + usbInterface.getId() + '">';
             content += 'Interface #' + usbInterface.getId() + '</h3>';
             content += 'Alternate Setting: ' + usbInterface.getAlternateSetting() + '<br>';
@@ -187,7 +212,7 @@ feedLine 4{{feedLine " + String.fromCharCode(4) + "}}\n\
                 content += '- Maximum Packet Size: ' + endpoint.getMaximumPacketSize();
             });
         });
-        
+
         content += '<br><br><button type="button" class="js-disconnect">Disconnect</button>';
 
         $deviceInfo.html(content);
@@ -296,6 +321,7 @@ Points fidélités               \n\
   Solde actuel: 4229 PTS             \n\
 \n\
 ------------------------------------------\n\
+TEST : $ £ # éèê ñ ûü *µ -+ [] & % !\n\
 \n\
 {{center}}RCS Paris 531 802 981\n\
 \n\

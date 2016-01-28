@@ -30,12 +30,12 @@ function triggerEvent(eventId, eventData) {
  */
 function bindEvent(eventId, eventHandler) {
     if ($.isFunction(eventHandler) !== true) return;
-    
+
     $window.on(eventId, eventHandler);
 }
 
 /**
- * 
+ *
  * @param {String} num
  * @param {Integer} size
  * @returns {String}

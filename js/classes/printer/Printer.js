@@ -16,16 +16,63 @@ function Printer (vendorId, productId, deviceId) {
 
     // Index de l'interface courrante dans la liste des interfaces
     this.currentInterfaceIndex = null;
-    
+
     // Instancie l'implémentation du langage ESC/POS conforme au modèle de l'imprimante
     this.initLanguage();
+}
+
+/**
+ * Liste des bacs d'impression
+ */
+Printer.TRAYS = {
+  RECEIPT:   2,
+  SLIP:      4,
+  BOTH:      3
+}
+
+/**
+ * Liste des imprimantes
+ * @returns {printerType []}
+ */
+Printer.getPrinterTypes = function () {
+    return {
+        EpsonTMH6000IV: {
+            name: "EPSON TM-H6000IV Receipt",
+            devices: [{vendorId: 1208, productId: 514}]
+        },
+        EpsonTMT20II: {
+            name: "EPSON TM-T20II Receipt"
+        },
+        EpsonTMU950: {
+            name: "EPSON TM-U950 Receipt",
+            devices: [{vendorId: 6790, productId: 30084}]
+        }
+    };
+}
+
+/**
+ * Printer factory
+ * @returns Printer
+ */
+Printer.getPrinter = function (device, printerType) {
+    // Créer l'objet représentant l'imprimante en fonction du modèle
+    var names = Printer.getPrinterTypes();
+
+    for (printer in names) if (names[printer].name == printerType || printer == printerType){
+        return new window[printer](device.vendorId, device.productId, device.device);
+    }
+
+    console.warn('Instanciation d\'une imprimante générique');
+
+    return new EpsonTMU950(device.vendorId, device.productId, device.device);
 }
 
 /**
  * Instancie l'implémentation générique du langage ESC/POS
  */
 Printer.prototype.initLanguage = function() {
-    console.log('Printer::initLanguage');
+    console.debug('Printer::initLanguage');
+
     this.language = new EpsonLanguage();
 };
 
@@ -181,7 +228,7 @@ Printer.prototype.findEndpoint = function(direction) {
     var interfaceObj = this.getCurrentInterface();
     var matchedEndpoint = null;
 
-    if (! interfaceObj) {
+    if (!interfaceObj) {
         console.error('Cannot find endpoint, no interface claimed');
         return;
     }
@@ -204,18 +251,35 @@ Printer.prototype.setCurrentTray = function(tray) {
 };
 
 /**
- * Parse la chaîne de caractères et injècte les commandes ESC/POS d'initialisation
- * en fonction du modèle de l'imprimante
+ * Parse, injecte les commandes ESC/POS d'initialisation
+ * et envoi l'impression à l'imprimante
+ * @param {String} string
+ * @returns {ArrayBuffer}
+ */
+Printer.prototype.parsePrint = function(string, tray) {
+    if (tray !== undefined){
+        this.setCurrentTray(tray);
+    }
+
+    // Finalise la commande d'impression selon le modèle de l'imprimante
+    var finalizedString = this.finalizePrintCommand(string, this.getCurrentTray());
+
+    // Parse le texte pour y insérer le commande ESC/POS
+    return this.parseCommand(finalizedString);
+};
+
+/**
+ * Parse la chaîne de caractères en fonction du modèle de l'imprimante
+ * et envoi la commande à l'imprimante
  * @param {String} string
  * @returns {ArrayBuffer}
  */
 Printer.prototype.parseCommand = function(string) {
-    // Finalise la commande d'impression selon le modèle de l'imprimante
-    var finalizedString = this.finalizePrintCommand(string, this.getCurrentTray());
-    
-    // Parse le texte pour y insérer le commande ESC/POS
-    var parsedString = this.language.parse(finalizedString);
-    
+     // Parse le texte pour y insérer le commande ESC/POS
+    var parsedString = this.language.parse(string);
+
+    console.debug('Printer::parseCommand', parsedString);
+
     // Retourne le buffer
     return this.stringtoArrayBuffer(parsedString);
 };

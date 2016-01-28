@@ -10,7 +10,7 @@ EpsonTMU950.prototype.constructor = EpsonTMU950;
  */
 EpsonTMU950.prototype.initLanguage = function() {
     console.info('EpsonTMU950::initLanguage');
-    this.language = new EpsonTMH6000IVLanguage();
+    this.language = new EpsonTMU950Language();
 };
 
 /**
@@ -20,25 +20,18 @@ EpsonTMU950.prototype.initLanguage = function() {
  * @returns {String}
  */
 EpsonTMU950.prototype.finalizePrintCommand = function(string, tray) {
+    var charset = String.fromCharCode(EpsonLanguage.INTERNATIONAL_CHARSET_USA);
+    var table = String.fromCharCode(EpsonLanguage.CHARACTER_TABLE_PC437);
     var finalFeed = String.fromCharCode(0x10);
     tray = String.fromCharCode(tray);
-    string = string.replace(/é/gi, "" + String.fromCharCode(0x7B));
-    string = string.replace(/è/gi, "" + String.fromCharCode(0x7D));
-    string = string.replace(/à/gi, "" + String.fromCharCode(0x40));
-    string = string.replace(/ù/gi, "" + String.fromCharCode(0x7C));
-    
-    /**
-     * @todo Portion de code Java qui n'a pas été implémentée
-     * où "flux" (Java) = string (JS)
-     * Normalizer.normalize(flux, Normalizer.Form.NFD).replaceAll("[\u0300-\u036F]", "");
-     */
-    
+
     var command  = '{{initPrint}}';
         command += '{{bac ' + tray + '}}';
+        command += '{{initCharacters ' + charset + ' ' + table + '}}';
         command += '{{R1}}';
         command += string;
         command += '{{feedAndCut ' + finalFeed + '}}';
-        
+
     console.info('EpsonTMU950::finalizePrintCommand', command);
     return command;
 };

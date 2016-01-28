@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chromeia</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+
+    <script src="../assets/jquery-1.11.3.min.js"></script>
+    <script src="../assets/EventEmitter.min.js"></script>
+    <script src="../js/classes/language/EpsonLanguage.js"></script>
+    <script src="../js/classes/language/EpsonTMH6000IVLanguage.js"></script>
+    <script src="../js/classes/language/EpsonTMT20IILanguage.js"></script>
+    <script src="../js/classes/language/EpsonTMU950Language.js"></script>
+    <script src="../js/classes/printer/Endpoint.js"></script>
+    <script src="../js/classes/printer/UsbInterface.js"></script>
+    <script src="../js/classes/printer/Printer.js"></script>
+    <script src="../js/classes/printer/EpsonTMH6000IV.js"></script>
+    <script src="../js/classes/printer/EpsonTMT20II.js"></script>
+    <script src="../js/classes/printer/EpsonTMU950.js"></script>
+    <script src="../js/classes/Api.js"></script>
+    <script src="../js/classes/App.js"></script>
+    <script src="main.js"></script>
+</head>
+<body style="width: 450px">
+    <h2>Veuillez sélectionner un périphérique d'impression</h2>
+    <div style="margin-bottom: 10px;">
+        <h3>Périphériques detectés automatiquement :</h3>
+        <select id="sel-device-comptatible" size="8" style="width: 100%;">
+            <option selected="selected">- Aucun périphérique detecté -</option>
+        </select>
+    </div>
+    <div style="margin-bottom: 20px">
+        <label for="sel-printer-type" style="line-height: 24px; display: inline-block; position: relative;">Modèle d'imprimante : </label>
+        <select id="sel-printer-type" style="width: 300px; height: 24px; display: inline-block; position: relative; float: right">
+            <option>- Imprimante générique -</option>
+        </select>
+    </div>
+    <div>
+        <button class="button" id="but-valider-device"><img class="but-icon" src="../images/16_check.gif">Choisir ce périphérique</button>
+        <button class="button" id="but-show-usb-device"><img class="but-icon" src="../images/16_imprimante.gif">Sélectionner un autre périphérique</button>
+    </div>
+</body>
+</html>

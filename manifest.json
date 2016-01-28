@@ -1,8 +1,9 @@
 {
     "manifest_version": 2,
-    "name": "Archipelia",
+    "name": "Chromeia",
     "description": "Application Archipelia permettant l'impression via l'API USB.",
-    "version": "0.2.0",
+    "version": "0.2.1",
+    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuCi4+jlbGm9W2+7R7r2+jUse67PBCU6KvycpigH9Y0CItkr6U2FbkeqOj2pEDbmyPQQ3T2TWQ+EihtEYisIRfZJOS02xw/3Rl1qcO2Wt6KAFhs0VyqjeI9ZJu6T/NqWYIqcWopeKQIRj5DH5uH+Xuv8OJgBWsFwIxkvhgtRCY03pv4yDlrfLmh7QjikTYDsM8AjG9tcWkbZKdZMa9nE4CDgWc9ZHMr4P1DM79J7D1Siqom/XhtQ26/xbz57FswMwYMbemd9jy9xFnC8fPnun9ipEZUOcGGa4IHICnY0TIvCE9/XiaIM/WOddbqlXHRwB+l/OMG78OxKnJwRqopouPwIDAQAB",
     "icons": {
         "16": "images/16-money-machine.png",
         "128": "images/128-money-machine.png"
@@ -34,12 +35,17 @@
                 {
                     "vendorId": 1208,
                     "productId": 514
+                },
+                {
+                    "vendorId": 6790,
+                    "productId": 30084
                 }
             ]
         },
-        "storage"
+        "storage",
+        "alwaysOnTopWindows"
     ],
     "externally_connectable": {
-        "matches": ["*://*.doom2.intra.wixiweb.net/*"]
+        "matches": ["*://*.autarcia.com/*", "*://*.aut.fr/*"]
     }
 }
