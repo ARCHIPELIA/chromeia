@@ -1,0 +1,6 @@
+### PhpStorm ###
+.idea/
+
+### NetBeans ###
+nbproject/
+build/
