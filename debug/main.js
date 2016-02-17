@@ -1,4 +1,3 @@
-var printer = null;
 
 var EVENTS = {
     DEVICE_CONNECTED: 'archipelia:device_connected',
@@ -14,14 +13,20 @@ var EVENTS = {
  */
 chrome.storage.local.get('selectedDevice', function(items) {
     if (checkRuntimeError() !== true) return;
-    
+
     if (items.hasOwnProperty('selectedDevice') !== true) {
         console.log('No device in localStorage')
         return;
     }
-    
-    console.log('Device restored', items.selectedDevice);
-    openPrinterConnection(items.selectedDevice);
+
+    chrome.usb.getDevices({filters: [{vendorId: items.selectedDevice.vendorId}, {productId: items.selectedDevice.productId}]}, function (items){
+        var device = items[0];
+
+        if (device != null){
+            console.log('Device restored', device);
+            openPrinterConnection(device);
+        }
+    });
 });
 
 /*
@@ -47,10 +52,10 @@ bindEvent(EVENTS.DEVICE_CONNECTED, function() {
  */
 bindEvent(EVENTS.DEVICE_INFO_OBTAINED, function() {
     // Ne pas continuer si aucune interface
-    if (printer.getInterfaces().length < 1) return;
+    if (app.api.printer.getInterfaces().length < 1) return;
 
     // Tente de prendre le contrôle de la première interface
-    claimInterface( printer.getInterfaceAt(0) );
+    claimInterface( app.api.printer.getInterfaceAt(0) );
 });
 
 /**
@@ -61,7 +66,7 @@ bindEvent(EVENTS.INTERFACE_CLAIMED, function() {
     // Trouve l'endpoint en direction OUT
     var endpointOut = findEndpoint(ENDPOINT_DIRECTION_OUT);
     if (endpointOut !== null) {
-        printer.setCurrentEndpoint(endpointOut);
+        app.api.printer.setCurrentEndpoint(endpointOut);
         triggerEvent(EVENTS.ENDPOINT_SELECTED, [ endpointOut.getAddress() ]);
 
         console.log('Current endpoint', endpointOut);
@@ -78,16 +83,16 @@ function showSelectDeviceWindow() {
 
     chrome.usb.getUserSelectedDevices(params, function (selectedDeviceList) {
         resetWarningMessage();
-        
+
         // Aucun périphérique sélectionné
         if (selectedDeviceList.length < 1) return;
 
         var selectedDevice = selectedDeviceList[0];
         console.log('Selected device', selectedDevice);
-        
+
         chrome.storage.local.set({'selectedDevice': selectedDevice}, function() {
             if (checkRuntimeError() !== true) return;
-            
+
             console.log('Device stored');
             openPrinterConnection(selectedDevice);
         });
@@ -103,9 +108,9 @@ function openPrinterConnection(device) {
     chrome.usb.openDevice(device, function (connection) {
         if (checkRuntimeError() !== true) return;
 
-        printer = new EpsonTMH6000IV(device.vendorId, device.productId, device.device);
-        printer.setConnection(connection);
-        
+        app.api.printer = new EpsonTMU950(device.vendorId, device.productId, device.device);
+        app.api.printer.setConnection(connection);
+
         triggerEvent(EVENTS.DEVICE_CONNECTED);
     });
 }
@@ -115,7 +120,7 @@ function openPrinterConnection(device) {
  * @event EVENTS.DEVICE_INFO_OBTAINED
  */
 function getPrinterInfo() {
-    chrome.usb.getConfiguration(printer.getConnection(), function(config) {
+    chrome.usb.getConfiguration(app.api.printer.getConnection(), function(config) {
         if (checkRuntimeError() !== true) return;
         console.log('Device config', config);
 
@@ -133,7 +138,7 @@ function getPrinterInfo() {
             usbInterface.setProtocol(interface.interfaceProtocol);
 
             interfaceList.push(usbInterface);
-            
+
             interface.endpoints.forEach(function(endpoint) {
                 endpointObj = new Endpoint(endpoint.address);
                 endpointObj.setType(endpoint.type);
@@ -147,7 +152,7 @@ function getPrinterInfo() {
         });
 
         // Ajoute les interfaces à l'objet Printer
-        printer.setInterfaces(interfaceList);
+        app.api.printer.setInterfaces(interfaceList);
 
         triggerEvent(EVENTS.DEVICE_INFO_OBTAINED);
     });
@@ -162,11 +167,11 @@ function getPrinterInfo() {
 function claimInterface(interfaceObj) {
     releaseCurrentInterface();
 
-    chrome.usb.claimInterface(printer.getConnection(), interfaceObj.getId(), function() {
+    chrome.usb.claimInterface(app.api.printer.getConnection(), interfaceObj.getId(), function() {
         if (checkRuntimeError() !== true) return;
         console.log('USB interface claimed', interfaceObj);
 
-        printer.setCurrentInterface(interfaceObj);
+        app.api.printer.setCurrentInterface(interfaceObj);
         triggerEvent(EVENTS.INTERFACE_CLAIMED, [ interfaceObj.getId() ]);
     });
 }
@@ -176,14 +181,14 @@ function claimInterface(interfaceObj) {
  * @event EVENTS.INTERFACE_RELEASED
  */
 function releaseCurrentInterface() {
-    var interfaceObj = printer.getCurrentInterface();
+    var interfaceObj = app.api.printer.getCurrentInterface();
 
     if (interfaceObj == undefined) return;
 
-    chrome.usb.releaseInterface(printer.getConnection(), interfaceObj.getId(), function() {
+    chrome.usb.releaseInterface(app.api.printer.getConnection(), interfaceObj.getId(), function() {
         if (checkRuntimeError() !== true) return;
-        
-        printer.setCurrentInterfaceIndex(null);
+
+        app.api.printer.setCurrentInterfaceIndex(null);
         triggerEvent(EVENTS.INTERFACE_RELEASED, [ interfaceObj.getId() ]);
     });
 }
@@ -195,7 +200,7 @@ function releaseCurrentInterface() {
  * @return {Endpoint}
  */
 function findEndpoint(direction) {
-    var interfaceObj = printer.getCurrentInterface();
+    var interfaceObj = app.api.printer.getCurrentInterface();
     var matchedEndpoint = null;
 
     if (interfaceObj == undefined) {
@@ -218,14 +223,14 @@ function findEndpoint(direction) {
  * @param {ArrayBuffer} data
  */
 function sendCommandToPrinter(data) {
-    var currentEndpoint = printer.getCurrentEndpoint();
+    var currentEndpoint = app.api.printer.getCurrentEndpoint();
     var transferInfo = {
         "direction": currentEndpoint.getDirection(),
         "endpoint": currentEndpoint.getAddress(),
         "data": data
     };
-    
-    chrome.usb.bulkTransfer(printer.getConnection(), transferInfo, function (transferResult) {
+
+    chrome.usb.bulkTransfer(app.api.printer.getConnection(), transferInfo, function (transferResult) {
         console.log('Send data', transferResult);
     });
 }
@@ -237,12 +242,18 @@ function sendCommandToPrinter(data) {
  */
 function disconnectPrinter() {
     // Ferme la connexion avec le périphérique
-    chrome.usb.closeDevice(printer.getConnection(), function() {
-        // Retire les infos du périphérique en localStorage
-        chrome.storage.local.remove('selectedDevice', function() {
+    if (app.api.printer && app.api.printer.getConnection() != null){
+        console.log(app.api.printer);
+        chrome.usb.closeDevice(app.api.printer.getConnection(), function() {
             if (checkRuntimeError() !== true) return;
-            
-            triggerEvent(EVENTS.DEVICE_DISCONNECTED);
+
+            app.api.printer = null;
+            // Retire les infos du périphérique en localStorage
+            //chrome.storage.local.remove('selectedDevice', function() {
+              //  if (checkRuntimeError() !== true) return;
+
+                triggerEvent(EVENTS.DEVICE_DISCONNECTED);
+            //});
         });
-    });
+    }
 }

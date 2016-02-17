@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-    
+
     <script src="../assets/jquery-1.11.3.min.js"></script>
     <script src="../assets/EventEmitter.min.js"></script>
     <script src="../js/classes/language/EpsonLanguage.js"></script>
@@ -30,24 +30,19 @@
         <h2>Please select a device</h2>
 
         <button class="js-select-device">Browse devices</button>
+        <button id="but-check-permissions">Check permissions</button>
     </div>
 
     <div class="step-2 js-steps hidden">
 
-        <div class="right">
-            <h2>Device Info</h2>
-
-            <div class="js-info"></div>
-        </div>
-
         <div class="left">
             <h2>Playground</h2>
-            
+
             <p>
-                <input type="text" class="mgr js-input" value="Wixiweb!">
+                <input type="text" class="mgr js-input" value="En août, c'est l'été !">
                 <button class="js-print js-printer-button" disabled>Send text</button>
             </p>
-            
+
             <p>
                 <button class="mgr js-receipt js-printer-button" disabled>Receipt</button>
                 <button class="mgr js-template js-printer-button" disabled>Template</button>
@@ -62,11 +57,17 @@
                 <button class="mgr js-paper-roll js-printer-button" disabled>Roll paper</button>
                 <button class="js-paper-slip js-printer-button" disabled>Slip paper</button>
             </p>
-            
+
             <hr />
-            
+
             <input type="number" min="0" class="mgr js-paper-slip-feed" value="0" style="width: 40px;">
             <button class="js-test js-printer-button" disabled style="color: red;">Test</button>
+        </div>
+
+        <div class="right">
+            <h2>Device Info</h2>
+
+            <div class="js-info"></div>
         </div>
 
     </div>

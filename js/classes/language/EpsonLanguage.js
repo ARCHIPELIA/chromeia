@@ -161,9 +161,40 @@ EpsonLanguage.prototype.doJustify = function() {
     return '';
 };
 
+EpsonLanguage.prototype.toCodePage = function(text, characterTableCode) {
+    var codePage;
+
+    // Sélection de la Page de Codes
+    switch (characterTableCode.charCodeAt(0)){
+        case EpsonLanguage.CHARACTER_TABLE_PC437:
+            codePage = EpsonLanguage.CODEPAGES_PC437;
+            break;
+    }
+
+    // Aucune page de codes trouvé
+    if (codePage == null)
+        return text;
+
+    // Conversion
+    var buffer   = '';
+
+    for (var i in text){
+        var charPos = codePage.indexOf(text[i]);
+
+        if (charPos !== -1){
+            buffer += String.fromCharCode(charPos + 128);
+        } else {
+            buffer += text[i];
+        }
+    };
+
+    return buffer;
+}
+
 EpsonLanguage.prototype.parse = function(text) {
     var self = this;
-    
+    var tableCode = null;
+
     var initPrintRegExp      = new RegExp('\{\{initPrint\}\}', 'g');
     var initCharactersRegExp = new RegExp('\{\{initCharacters (.{1}) (.{1})\}\}', 'g');
     var bacRegExp            = new RegExp('\{\{bac (.{1})\}\}', 'g');
@@ -186,13 +217,15 @@ EpsonLanguage.prototype.parse = function(text) {
     var singleJustifyRegExp  = new RegExp('\{\{justify\}\}', 'g');
     var R0RegExp             = new RegExp('\{\{R0\}\}', 'g');
     var R1RegExp             = new RegExp('\{\{R1\}\}', 'g');
-    
+
     // {{initPrint}}
     text = text.replace(initPrintRegExp, function() {
         return self.initPrinter();
     });
     // {{initCharacters X Y}}
     text = text.replace(initCharactersRegExp, function(match, internationalCharacter, characterTableCode) {
+        tableCode = characterTableCode;
+
         return self.initCharacters(internationalCharacter, characterTableCode);
     });
     // {{bac X}}
@@ -215,7 +248,7 @@ EpsonLanguage.prototype.parse = function(text) {
     text = text.replace(cutRegExp, function() {
         return self.cutPaper();
     });
-    
+
     // {{bold}}...{{endbold}}
     text = text.replace(boldRegExp, function(match, string) {
         return self.doBold(string);
@@ -240,7 +273,7 @@ EpsonLanguage.prototype.parse = function(text) {
     text = text.replace(bigRegExp, function(match, string) {
         return self.doDoubleWidth(string);
     });
-    
+
     // {{left}}...{{endleft}}
     text = text.replace(leftRegExp, function(match, string) {
         return self.doToggleLeftAlign(string);
@@ -273,7 +306,7 @@ EpsonLanguage.prototype.parse = function(text) {
     text = text.replace(singleJustifyRegExp, function() {
         return self.doJustify();
     });
-    
+
     // {{R0}}
     text = text.replace(R0RegExp, function() {
         return self.setInternationalCharacterSet(EpsonLanguage.INTERNATIONAL_CHARSET_USA);
@@ -282,7 +315,11 @@ EpsonLanguage.prototype.parse = function(text) {
     text = text.replace(R1RegExp, function() {
         return self.setInternationalCharacterSet(EpsonLanguage.INTERNATIONAL_CHARSET_FRANCE);
     });
-    
+
+    if (tableCode != null){
+        text = self.toCodePage(text, tableCode);
+    }
+
     return text;
 };
 
@@ -356,3 +393,14 @@ EpsonLanguage.CHARACTER_TABLE_THAI_CODE_17 = 0x19; // 25
 EpsonLanguage.CHARACTER_TABLE_THAI_CODE_18 = 0x1A; // 26
 EpsonLanguage.CHARACTER_TABLE_USER_DEFINED_1 = 0xFE; // 254
 EpsonLanguage.CHARACTER_TABLE_USER_DEFINED_2 = 0xFF; // 255
+
+/* PC437 */
+EpsonLanguage.CODEPAGES_PC437 =
+    'ÇüéâäàåçêëèïîìÄÅ' +
+    'ÉæÆôöòûùÿÖÜ¢£¥₧ƒ' +
+    'áíóúñÑªº¿⌐¬½¼¡«»' +
+    '░▒▓│┤╡╢╖╕╣║╗╝╜╛┐' +
+    '└┴┬├─┼╞╟╚╔╩╦╠═╬╧' +
+    '╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀' +
+    'αßΓπΣσµτΦΘΩδ∞φε∩' +
+    '≡±≥≤⌠⌡÷≈°··√ⁿ²■';

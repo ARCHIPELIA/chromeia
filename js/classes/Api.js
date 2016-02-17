@@ -1,15 +1,19 @@
 /* global chrome, Printer, EventEmitter, ENDPOINT_DIRECTION_IN, ENDPOINT_DIRECTION_OUT */
 
+/**
+ * API de communication avec l'imprimante
+ * @returns {Api}
+ */
 var Api = function()
 {
     // Initialise la classe parente EventEmitter en premier lieu
     EventEmitter.apply(this);
-    
+
     // Évènement lancé lorsque que la connexion à un périphérique est établie
     this.addListener(this.EVENTS.INTERNAL.DEVICE_CONNECTED,
         this.onUsbDeviceConnectedListener
     );
-    
+
     // Lorsque l'on a les infos d'un périhpérique, on prend la main dessus
     this.addListener(this.EVENTS.INTERNAL.DEVICE_INFO_OBTAINED,
         this.onUsbDeviceInfoObtainedListener
@@ -20,9 +24,10 @@ var Api = function()
         this.onUsbInterfaceClaimedListener
     );
 };
+
 Api.prototype = Object.create(EventEmitter.prototype);
 Api.prototype.constructor = EventEmitter;
-    
+
 /**
  * Instance de l'objet représentant l'imprimante
  * @type Printer
@@ -37,6 +42,8 @@ Api.prototype.EVENTS = {
     RUNTIME_ERROR: 'chrome:api:runtime:error',
     DEVICE_CONNECTED: 'chrome:api:device:connected',
     DEVICE_DISCONNECTED: 'chrome:api:device:disconnected',
+    PRINT: 'chrome:api:device:print',
+    OPEN_DRAWER: 'chrome:api:device:open-drawer',
     INTERNAL: {
         DEVICE_CONNECTED: 'chrome:api:internal:device:connected',
         DEVICE_DISCONNECTED: 'chrome:api:internal:device:disconnected',
@@ -56,12 +63,26 @@ Api.prototype.hasChromeRuntimeError = function ()
 {
     if (chrome.runtime.lastError) {
         console.error('Api::chromeRuntimeError', chrome.runtime.lastError.message);
+
         this.emitEvent(this.EVENTS.RUNTIME_ERROR, [
             chrome.runtime.lastError.message
         ]);
+
         return true;
     }
     return false;
+};
+
+/**
+ * Récupérer l'instance de l'imprimante connectée
+ * @returns {Printer}
+ */
+Api.prototype.getPrinter = function()
+{
+    if (!this.printer)
+        throw 'Aucune imprimante connecté !';
+
+    return this.printer;
 };
 
 /**
@@ -80,10 +101,10 @@ Api.prototype.onUsbDeviceConnectedListener = function()
 Api.prototype.onUsbDeviceInfoObtainedListener = function()
 {
     // Ne pas continuer si aucune interface
-    if (this.printer.getInterfaces().length < 1) return;
+    if (this.getPrinter().getInterfaces().length < 1) return;
 
     // Tente de prendre le contrôle de la première interface
-    this.claimInterface( this.printer.getInterfaceAt(0) );
+    this.claimInterface( this.getPrinter().getInterfaceAt(0) );
 };
 
 /**
@@ -94,16 +115,21 @@ Api.prototype.onUsbDeviceInfoObtainedListener = function()
 Api.prototype.onUsbInterfaceClaimedListener = function()
 {
     // Trouve l'endpoint en direction OUT
-    var endpointOut = this.printer.findEndpoint(ENDPOINT_DIRECTION_OUT);
+    var endpointOut = this.getPrinter().findEndpoint(ENDPOINT_DIRECTION_OUT);
+
     if (endpointOut !== null) {
-        this.printer.setCurrentEndpoint(endpointOut);
+        this.getPrinter().setCurrentEndpoint(endpointOut);
 
         console.log('Current endpoint', endpointOut);
-        
+
         this.emitEvent(this.EVENTS.INTERNAL.ENDPOINT_SELECTED, [
             endpointOut.getAddress()
         ]);
     }
+
+    this.emitEvent(this.EVENTS.DEVICE_CONNECTED, [
+        this.printer
+    ]);
 };
 
 
@@ -111,50 +137,46 @@ Api.prototype.onUsbInterfaceClaimedListener = function()
  * Ouvre une connexion avec le périphérique USB
  * et instancie l'objet de l'imprimante
  * @param {Object} device
- * @param {String} printerName
+ * @param {String} printerType
  * @event EVENTS.INTERNAL.DEVICE_CONNECTED
  * @event EVENTS.DEVICE_CONNECTED
  */
-Api.prototype.openPrinterConnection = function(device, printerName)
+Api.prototype.openPrinterConnection = function(device, printerType)
 {
     var api = this;
-    
-    chrome.usb.openDevice(device, function (connection) {
-        if (api.hasChromeRuntimeError()) return;
-        console.log('Api::openPrinterConnection - Connection opened', device, connection);
 
-        // Créer l'objet représentant l'imprimante en fonction du modèle
-        switch (printerName) {
-            case "EPSON TM-H6000IV Receipt":
-                api.printer = new EpsonTMH6000IV(device.vendorId, device.productId, device.device);
-                break;
-            case "EPSON TM-U950 Receipt":
-                api.printer = new EpsonTMU950(device.vendorId, device.productId, device.device);
-                break;
-            case "EPSON TM-T20II Receipt":
-                api.printer = new EpsonTMT20II(device.vendorId, device.productId, device.device);
-                break;
-            default:
-                console.error('Instanciate generic printer');
-                api.printer = new Printer(device.vendorId, device.productId, device.device);
-                break;
-        }
+    function openDevice(){
+        chrome.usb.openDevice(device, function (connection) {
+            if (api.hasChromeRuntimeError()) return;
 
-        if (! api.printer instanceof Printer) {
-            console.error('Could not instanciate printer object');
-            return;
-        }
+            console.debug('Api::openPrinterConnection - Connexion ouverte', device, connection);
 
-        api.printer.setConnection(connection);
-        
-        api.emitEvent(api.EVENTS.INTERNAL.DEVICE_CONNECTED, [
-            api.printer
-        ]);
-        api.emitEvent(api.EVENTS.DEVICE_CONNECTED, [
-            api.printer
-        ]);
-    });
+            // Créer l'objet représentant l'imprimante en fonction du modèle
+            api.printer = Printer.getPrinter(device, printerType);
+
+            api.printer.setConnection(connection);
+
+            api.emitEvent(api.EVENTS.INTERNAL.DEVICE_CONNECTED, [
+                api.printer
+            ]);
+        });
+    };
+
+    if (this.printer != null){
+        // Ferme la connexion déjà ouverte avec le périphérique
+        chrome.usb.closeDevice(this.getPrinter().getConnection(), function() {
+            if (api.hasChromeRuntimeError()) return;
+
+            api.printer = null;
+
+            openDevice();
+        });
+    } else {
+        openDevice();
+    }
 };
+
+
 
 /**
  * Récupère les informations USB de l'imprimante connectée
@@ -165,8 +187,10 @@ Api.prototype.openPrinterConnection = function(device, printerName)
 Api.prototype.getPrinterInfo = function()
 {
     var api = this;
-    chrome.usb.getConfiguration(this.printer.getConnection(), function(config) {
+
+    chrome.usb.getConfiguration(this.getPrinter().getConnection(), function(config) {
         if (api.hasChromeRuntimeError()) return;
+
         console.log('Device config', config);
 
         var interfaceList = [];
@@ -199,12 +223,9 @@ Api.prototype.getPrinterInfo = function()
         });
 
         // Ajoute les interfaces à l'objet Printer
-        api.printer.setInterfaces(interfaceList);
-        
+        api.getPrinter().setInterfaces(interfaceList);
+
         api.emitEvent(api.EVENTS.INTERNAL.DEVICE_INFO_OBTAINED);
-        api.emitEvent(api.EVENTS.DEVICE_CONNECTED, [
-            api.printer
-        ]);
     });
 };
 
@@ -217,15 +238,16 @@ Api.prototype.getPrinterInfo = function()
 Api.prototype.claimInterface = function(interfaceObj)
 {
     var api = this;
-    
+
     this.releaseCurrentInterface();
 
-    chrome.usb.claimInterface(this.printer.getConnection(), interfaceObj.getId(), function() {
+    chrome.usb.claimInterface(this.getPrinter().getConnection(), interfaceObj.getId(), function() {
         if (api.hasChromeRuntimeError()) return;
+
         console.log('USB interface claimed', interfaceObj);
 
-        api.printer.setCurrentInterface(interfaceObj);
-        
+        api.getPrinter().setCurrentInterface(interfaceObj);
+
         api.emitEvent(api.EVENTS.INTERNAL.INTERFACE_CLAIMED, [
             interfaceObj.getId()
         ]);
@@ -239,14 +261,14 @@ Api.prototype.claimInterface = function(interfaceObj)
 Api.prototype.releaseCurrentInterface = function()
 {
     var api = this;
-    var interfaceObj = this.printer.getCurrentInterface();
+    var interfaceObj = this.getPrinter().getCurrentInterface();
 
-    if (! interfaceObj) return;
+    if (!interfaceObj) return;
 
-    chrome.usb.releaseInterface(this.printer.getConnection(), interfaceObj.getId(), function() {
+    chrome.usb.releaseInterface(this.getPrinter().getConnection(), interfaceObj.getId(), function() {
         if (api.hasChromeRuntimeError()) return;
-        
-        api.printer.setCurrentInterfaceIndex(null);
+
+        api.getPrinter().setCurrentInterfaceIndex(null);
         api.emitEvent(api.EVENTS.INTERNAL.INTERFACE_RELEASED, [
             interfaceObj
         ]);
@@ -260,41 +282,76 @@ Api.prototype.releaseCurrentInterface = function()
  */
 Api.prototype.disconnectPrinter = function()
 {
-    if (! this.printer) return;
     var api = this;
-    
+
+    if (this.printer == null){
+        api.emitEvent(api.EVENTS.DEVICE_DISCONNECTED);
+        return;
+    }
+
     // Ferme la connexion avec le périphérique
-    chrome.usb.closeDevice(this.printer.getConnection(), function() {
-//        // Retire les infos du périphérique en localStorage
-//        chrome.storage.local.remove('selectedDevice', function() {
-//            if (app.hasChromeRuntimeError()) return;
-//            
-            api.emitEvent(api.EVENTS.INTERNAL.DEVICE_DISCONNECTED, [
-                api.printer
-            ]);
-            api.emitEvent(api.EVENTS.DEVICE_DISCONNECTED, [
-                api.printer
-            ]);
-            
-            api.printer = null;
-//        });
+    chrome.usb.closeDevice(this.getPrinter().getConnection(), function() {
+        api.printer = null;
+
+        api.emitEvent(api.EVENTS.INTERNAL.DEVICE_DISCONNECTED);
+        api.emitEvent(api.EVENTS.DEVICE_DISCONNECTED);
     });
 };
 
 /**
  * Envoie les données à l'imprimante
  * @param {String} template Le template à parser et imprimer
+ * @param {String} tray Le bac d'impression
  */
-Api.prototype.sendCommandToPrinter = function(template)
+Api.prototype.print = function(template, tray)
 {
-    var currentEndpoint = this.printer.getCurrentEndpoint();
-    var transferInfo = {
-        "direction": currentEndpoint.getDirection(),
-        "endpoint": currentEndpoint.getAddress(),
-        "data": this.printer.parseCommand(template)
-    };
-    
-    chrome.usb.bulkTransfer(this.printer.getConnection(), transferInfo, function (transferResult) {
-        console.log('bulkTransfer', transferResult);
-    });
+    var api = this;
+
+    this.sendCommand(
+            this.getPrinter().parsePrint(template, tray),
+            function (){
+                api.emitEvent(api.EVENTS.PRINT);
+            }
+    );
 };
+
+/**
+ * Ouverture du tiroir caisse
+ */
+Api.prototype.openDrawer = function()
+{
+    var api = this;
+
+    this.sendCommand(
+            this.getPrinter().parseCommand( this.getPrinter().language.drawerKickOut() ),
+            function (){
+                api.emitEvent(api.EVENTS.OPEN_DRAWER);
+            }
+    );
+};
+
+/**
+ * Envoi de la commande à l'imprimante
+ * @param {String} data
+ * @param {Function} callback
+ */
+Api.prototype.sendCommand = function(data, callback)
+{
+    var currentEndpoint = this.getPrinter().getCurrentEndpoint();
+
+    if (currentEndpoint == null)
+        throw 'Erreur de communication avec l\'imprimante !';
+
+    var transferInfo = {
+        direction: currentEndpoint.getDirection(),
+        endpoint: currentEndpoint.getAddress(),
+        data: data
+    };
+
+    chrome.usb.bulkTransfer(this.getPrinter().getConnection(), transferInfo, function (transferResult) {
+        console.log('bulkTransfer', transferResult);
+
+        if (callback instanceof Function)
+            callback();
+    });
+}

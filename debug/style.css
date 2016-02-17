@@ -12,17 +12,14 @@
 
 .right {
     border-left: 2px solid #999999;
-    bottom: 0;
     overflow: auto;
     padding: 10px;
-    position: absolute;
-    right: 0;
-    top: 0;
-    width: 35%;
+    float: right;
+    width: 220px;
 }
 
 .left {
-    padding-right: 35%;
+    float: left;
 }
 
 h2 {

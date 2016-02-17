@@ -6,14 +6,15 @@ chrome.app.runtime.onLaunched.addListener(function () {
     chrome.app.window.create('debug/index.html', {
         // Dimensions de la fenêtre
         innerBounds: {
-            width: 600,
-            height: 300,
+            width: 700,
+            height: 500,
             minWidth: 600,
             minHeight: 300
         }
-    });
-});
+    },
+    function (createdWindow) {
+        createdWindow.contentWindow.app = app;
 
-chrome.runtime.onSuspend.addListener(function() {
-    app.api.disconnectPrinter();
+        app.api.disconnectPrinter();
+    });
 });
