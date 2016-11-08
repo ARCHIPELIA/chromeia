@@ -2,7 +2,7 @@
     "manifest_version": 2,
     "name": "CHROMEia",
     "description": "Application Archipelia permettant l'impression via l'API USB.",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuCi4+jlbGm9W2+7R7r2+jUse67PBCU6KvycpigH9Y0CItkr6U2FbkeqOj2pEDbmyPQQ3T2TWQ+EihtEYisIRfZJOS02xw/3Rl1qcO2Wt6KAFhs0VyqjeI9ZJu6T/NqWYIqcWopeKQIRj5DH5uH+Xuv8OJgBWsFwIxkvhgtRCY03pv4yDlrfLmh7QjikTYDsM8AjG9tcWkbZKdZMa9nE4CDgWc9ZHMr4P1DM79J7D1Siqom/XhtQ26/xbz57FswMwYMbemd9jy9xFnC8fPnun9ipEZUOcGGa4IHICnY0TIvCE9/XiaIM/WOddbqlXHRwB+l/OMG78OxKnJwRqopouPwIDAQAB",
     "minimum_chrome_version": "47",
     "icons": {
@@ -40,6 +40,10 @@
                 {
                     "vendorId": 6790,
                     "productId": 30084
+                },
+                {
+                    "vendorId": 1208,
+                    "productId": 3605
                 }
             ]
         },
